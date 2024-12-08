@@ -94,9 +94,10 @@ class Dinosaur:
         if self.dino_jump:
             self.dino_rect.y -= self.jump_vel * 4
             self.jump_vel -= 0.8
-        if self.jump_vel < - self.JUMP_VEL:
-            self.dino_jump = False
-            self.jump_vel = self.JUMP_VEL
+            if self.dino_rect.y >= self.Y_POS:
+                self.dino_rect.y = self.Y_POS
+                self.dino_jump = False
+                self.jump_vel = self.JUMP_VEL
 
     def draw(self, SCREEN):
         SCREEN.blit(self.image, (self.dino_rect.x, self.dino_rect.y))
@@ -129,7 +130,8 @@ class Obstacle:
     def update(self):
         self.rect.x -= game_speed
         if self.rect.x < -self.rect.width:
-            obstacles.pop()
+            return True
+        return False
 
     def draw(self, SCREEN):
         SCREEN.blit(self.image[self.type], self.rect)
@@ -165,11 +167,15 @@ class Bird(Obstacle):
 
 def main():
     global game_speed, x_pos_bg, y_pos_bg, points, obstacles
+    INITIAL_GAME_SPEED = 20
+    SPEED_INCREMENT = 1
+    POINTS_SPEED_INCREASE = 100
+    
     run = True
     clock = pygame.time.Clock()
     player = Dinosaur()
     cloud = Cloud()
-    game_speed = 20
+    game_speed = INITIAL_GAME_SPEED
     x_pos_bg = 0
     y_pos_bg = 380
     points = 0
@@ -194,7 +200,6 @@ def main():
         SCREEN.blit(BG, (x_pos_bg, y_pos_bg))
         SCREEN.blit(BG, (image_width + x_pos_bg, y_pos_bg))
         if x_pos_bg <= -image_width:
-            SCREEN.blit(BG, (image_width + x_pos_bg, y_pos_bg))
             x_pos_bg = 0
         x_pos_bg -= game_speed
 
@@ -209,17 +214,19 @@ def main():
         player.draw(SCREEN)
         player.update(userInput)
 
+        obstacles = [obstacle for obstacle in obstacles if not obstacle.update()]
+        
         if len(obstacles) == 0:
-            if random.randint(0, 2) == 0:
+            obstacle_type = random.randint(0, 2)
+            if obstacle_type == 0:
                 obstacles.append(SmallCactus(SMALL_CACTUS))
-            elif random.randint(0, 2) == 1:
+            elif obstacle_type == 1:
                 obstacles.append(LargeCactus(LARGE_CACTUS))
-            elif random.randint(0, 2) == 2:
+            else:
                 obstacles.append(Bird(BIRD))
 
         for obstacle in obstacles:
             obstacle.draw(SCREEN)
-            obstacle.update()
             if player.dino_rect.colliderect(obstacle.rect):
                 pygame.time.delay(2000)
                 death_count += 1
@@ -258,10 +265,13 @@ def menu(death_count):
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
                 run = False
+                pygame.quit()
+                exit()
             if event.type == pygame.KEYDOWN:
                 main()
+                return
 
 
-menu(death_count=0)
+if __name__ == "__main__":
+    menu(death_count=0)
