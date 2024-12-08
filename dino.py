@@ -208,7 +208,7 @@ def main():
             if event.type == pygame.QUIT:
                 run = False
 
-        SCREEN.fill((255, 255, 255))
+        SCREEN.fill((173, 216, 230))
         userInput = pygame.key.get_pressed()
 
         player.draw(SCREEN)
@@ -247,7 +247,7 @@ def menu(death_count):
     global points
     run = True
     while run:
-        SCREEN.fill((255, 255, 255))
+        SCREEN.fill((173, 216, 230))
         font = pygame.font.Font('freesansbold.ttf', 30)
 
         if death_count == 0:
