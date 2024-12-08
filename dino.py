@@ -172,6 +172,7 @@ def main():
     POINTS_SPEED_INCREASE = 100
     
     run = True
+    paused = False
     clock = pygame.time.Clock()
     player = Dinosaur()
     cloud = Cloud()
@@ -182,6 +183,13 @@ def main():
     font = pygame.font.Font('freesansbold.ttf', 20)
     obstacles = []
     death_count = 0
+
+    def draw_pause_screen():
+        pause_font = pygame.font.Font('freesansbold.ttf', 30)
+        pause_text = pause_font.render("GAME PAUSED", True, (0, 0, 0))
+        pause_rect = pause_text.get_rect()
+        pause_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        SCREEN.blit(pause_text, pause_rect)
 
     def score():
         global points, game_speed
@@ -207,37 +215,42 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    paused = not paused  # Toggle pause state
 
-        SCREEN.fill((173, 216, 230))
-        userInput = pygame.key.get_pressed()
+        if not paused:
+            SCREEN.fill((173, 216, 230))
+            userInput = pygame.key.get_pressed()
 
-        player.draw(SCREEN)
-        player.update(userInput)
+            player.draw(SCREEN)
+            player.update(userInput)
 
-        obstacles = [obstacle for obstacle in obstacles if not obstacle.update()]
-        
-        if len(obstacles) == 0:
-            obstacle_type = random.randint(0, 2)
-            if obstacle_type == 0:
-                obstacles.append(SmallCactus(SMALL_CACTUS))
-            elif obstacle_type == 1:
-                obstacles.append(LargeCactus(LARGE_CACTUS))
-            else:
-                obstacles.append(Bird(BIRD))
+            obstacles = [obstacle for obstacle in obstacles if not obstacle.update()]
+            
+            if len(obstacles) == 0:
+                obstacle_type = random.randint(0, 2)
+                if obstacle_type == 0:
+                    obstacles.append(SmallCactus(SMALL_CACTUS))
+                elif obstacle_type == 1:
+                    obstacles.append(LargeCactus(LARGE_CACTUS))
+                else:
+                    obstacles.append(Bird(BIRD))
 
-        for obstacle in obstacles:
-            obstacle.draw(SCREEN)
-            if player.dino_rect.colliderect(obstacle.rect):
-                pygame.time.delay(2000)
-                death_count += 1
-                menu(death_count)
+            for obstacle in obstacles:
+                obstacle.draw(SCREEN)
+                if player.dino_rect.colliderect(obstacle.rect):
+                    pygame.time.delay(2000)
+                    death_count += 1
+                    menu(death_count)
 
-        background()
-
-        cloud.draw(SCREEN)
-        cloud.update()
-
-        score()
+            background()
+            cloud.draw(SCREEN)
+            cloud.update()
+            score()
+        else:
+            # Draw the pause screen
+            draw_pause_screen()
 
         clock.tick(30)
         pygame.display.update()
