@@ -1,6 +1,7 @@
 import pygame
 import os
 import random
+from user_manager import UserManager
 pygame.init()
 
 # Global Constants
@@ -31,6 +32,8 @@ BG = pygame.image.load(os.path.join("Assets/Other", "Track.png"))
 MENU_STATE = "menu"
 GAME_STATE = "game"
 GAME_OVER_STATE = "game_over"
+LOGIN_STATE = "login"
+REGISTER_STATE = "register"
 
 
 class Dinosaur:
@@ -177,11 +180,17 @@ class Game:
         self.points = 0
         self.obstacles = []
         self.font = pygame.font.Font('freesansbold.ttf', 20)
-        self.game_state = MENU_STATE
+        self.game_state = LOGIN_STATE
         self.player = None
         self.cloud = None
         self.paused = False
         self.clock = pygame.time.Clock()
+        self.user_manager = UserManager()
+        self.login_username = self.user_manager.last_login["username"]
+        self.login_password = self.user_manager.last_login["password"]
+        self.input_state = "username"
+        self.error_message = ""
+        self.current_score_saved = False
 
     def reset_game(self):
         self.game_speed = 20
@@ -191,12 +200,37 @@ class Game:
         self.obstacles.clear()
         self.player = Dinosaur()
         self.cloud = Cloud()
+        self.current_score_saved = False
 
     def draw_pause_screen(self):
+        SCREEN.fill((173, 216, 230))
         pause_font = pygame.font.Font('freesansbold.ttf', 30)
+        
+        # Show current user
+        user_text = pause_font.render(f"Current User: {self.user_manager.current_user}", True, (0, 0, 0))
+        user_rect = user_text.get_rect()
+        user_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100)
+        
+        # Pause text
         pause_text = pause_font.render("GAME PAUSED", True, (0, 0, 0))
         pause_rect = pause_text.get_rect()
-        pause_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        pause_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)
+        
+        # Instructions
+        inst_font = pygame.font.Font('freesansbold.ttf', 20)
+        instructions = [
+            "Press SPACE to Resume",
+            "Press R to Restart",
+            "Press Q to Quit"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            inst_text = inst_font.render(instruction, True, (0, 0, 0))
+            inst_rect = inst_text.get_rect()
+            inst_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + i * 40)
+            SCREEN.blit(inst_text, inst_rect)
+        
+        SCREEN.blit(user_text, user_rect)
         SCREEN.blit(pause_text, pause_rect)
 
     def score(self):
@@ -241,6 +275,12 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+                elif event.key == pygame.K_r and self.paused:  # Allow restart when paused
+                    self.reset_game()
+                    self.paused = False
+                    return True
+                elif event.key == pygame.K_q and self.paused:  # Allow quit when paused
+                    return False
 
         if not self.paused:
             SCREEN.fill((173, 216, 230))
@@ -248,6 +288,14 @@ class Game:
 
             self.player.draw(SCREEN)
             self.player.update(userInput)
+
+            # Check collisions before updating score
+            for obstacle in self.obstacles:
+                obstacle.draw(SCREEN)
+                if self.player.dino_rect.colliderect(obstacle.rect):
+                    pygame.time.delay(2000)
+                    self.game_state = GAME_OVER_STATE
+                    return True  # Return early to prevent score increment
 
             self.obstacles = [obstacle for obstacle in self.obstacles if not obstacle.update(self.game_speed)]
             
@@ -260,60 +308,245 @@ class Game:
                 else:
                     self.obstacles.append(Bird(BIRD))
 
-            for obstacle in self.obstacles:
-                obstacle.draw(SCREEN)
-                if self.player.dino_rect.colliderect(obstacle.rect):
-                    pygame.time.delay(2000)
-                    self.game_state = GAME_OVER_STATE
-
             self.background()
             self.cloud.draw(SCREEN)
             self.cloud.update(self.game_speed)
-            self.score()
+            self.score()  # Update score last
         else:
             self.draw_pause_screen()
         return True
 
     def handle_game_over_state(self):
+        if self.user_manager.current_user and not self.current_score_saved:
+            self.user_manager.add_score(self.points)
+            self.current_score_saved = True
+        
+        top_scores = self.user_manager.get_top_scores()
+        
         SCREEN.fill((173, 216, 230))
         font = pygame.font.Font('freesansbold.ttf', 30)
 
+        # Move dinosaur icon to 1/8 of screen height (about 75px from top)
+        SCREEN.blit(RUNNING[0], (SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 8))
+
+        # Game over and current score - keep other positions the same
         game_over_text = font.render("GAME OVER", True, (0, 0, 0))
         game_over_rect = game_over_text.get_rect()
-        game_over_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50)
+        game_over_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100)
+
+        # Show current user
+        user_text = font.render(f"Player: {self.user_manager.current_user}", True, (0, 0, 0))
+        user_rect = user_text.get_rect()
+        user_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 60)
 
         score_text = font.render(f"Your Score: {self.points}", True, (0, 0, 0))
         score_rect = score_text.get_rect()
-        score_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        score_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20)
 
-        restart_text = font.render("Press R to Restart", True, (0, 0, 0))
-        restart_rect = restart_text.get_rect()
-        restart_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50)
+        # Game over options
+        options = [
+            ("R - Restart", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 20)),
+            ("L - Switch User", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 60)),
+            ("Q - Quit", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100))
+        ]
 
-        quit_text = font.render("Press Q to Quit", True, (0, 0, 0))
-        quit_rect = quit_text.get_rect()
-        quit_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 100)
+        for text, pos in options:
+            option_text = font.render(text, True, (0, 0, 0))
+            option_rect = option_text.get_rect()
+            option_rect.center = pos
+            SCREEN.blit(option_text, option_rect)
 
         SCREEN.blit(game_over_text, game_over_rect)
+        SCREEN.blit(user_text, user_rect)
         SCREEN.blit(score_text, score_rect)
-        SCREEN.blit(restart_text, restart_rect)
-        SCREEN.blit(quit_text, quit_rect)
-        SCREEN.blit(RUNNING[0], (SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 - 140))
+
+        # Draw scores section with adjusted position
+        y_offset = SCREEN_HEIGHT // 2 + 140
+        score_font = pygame.font.Font('freesansbold.ttf', 20)
+        
+        # Global scores (left side)
+        title_text = score_font.render("Global Top 5:", True, (0, 0, 0))
+        SCREEN.blit(title_text, (SCREEN_WIDTH // 4 - 100, y_offset))
+        
+        for i, score in enumerate(top_scores):
+            score_text = score_font.render(
+                f"{i+1}. {score['username']}: {score['score']}", 
+                True, (0, 0, 0)
+            )
+            SCREEN.blit(score_text, (SCREEN_WIDTH // 4 - 100, y_offset + 25 * (i+1)))
+
+        # Personal scores (right side)
+        if self.user_manager.current_user:
+            user_scores = self.user_manager.get_user_scores(self.user_manager.current_user)
+            title_text = score_font.render("Your Top 5:", True, (0, 0, 0))
+            SCREEN.blit(title_text, (3 * SCREEN_WIDTH // 4 - 100, y_offset))
+            
+            for i, score in enumerate(user_scores):
+                score_text = score_font.render(
+                    f"{i+1}. {score}", 
+                    True, (0, 0, 0)
+                )
+                SCREEN.blit(score_text, (3 * SCREEN_WIDTH // 4 - 100, y_offset + 25 * (i+1)))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
+                    self.current_score_saved = False
                     self.reset_game()
                     self.game_state = GAME_STATE
+                elif event.key == pygame.K_l:  # Switch user
+                    self.user_manager.logout()
+                    # Clear login credentials
+                    self.login_username = ""
+                    self.login_password = ""
+                    self.game_state = LOGIN_STATE
                 elif event.key == pygame.K_q:
                     return False
         return True
 
+    def handle_login_state(self):
+        SCREEN.fill((173, 216, 230))
+        font = pygame.font.Font('freesansbold.ttf', 30)
+        
+        active_color = (0, 255, 0)  # Green for active field
+        inactive_color = (0, 0, 0)  # Black for inactive field
+        
+        title = font.render("Chrome Dino Game", True, (0, 0, 0))
+        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 100))
+        SCREEN.blit(title, title_rect)
+
+        # Draw username field with active indicator
+        username_text = font.render(f"Username: {self.login_username}", True, 
+                                  active_color if self.input_state == "username" else inactive_color)
+        SCREEN.blit(username_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50))
+
+        # Draw password field with active indicator
+        password_display = '*' * len(self.login_password)
+        password_text = font.render(f"Password: {password_display}", True,
+                                  active_color if self.input_state == "password" else inactive_color)
+        SCREEN.blit(password_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2))
+
+        if self.error_message:
+            error_text = font.render(self.error_message, True, (255, 0, 0))
+            SCREEN.blit(error_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 50))
+
+        inst_font = pygame.font.Font('freesansbold.ttf', 20)
+        instructions = [
+            "Press TAB to switch between username and password",
+            "Press ENTER to login",
+            "Press R to register new account"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            inst_text = inst_font.render(instruction, True, (0, 0, 0))
+            SCREEN.blit(inst_text, (SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 + 100 + i * 30))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_TAB:
+                    self.input_state = "password" if self.input_state == "username" else "username"
+                elif event.key == pygame.K_RETURN:
+                    success, message = self.user_manager.login_user(self.login_username, self.login_password)
+                    if success:
+                        self.game_state = MENU_STATE
+                        self.error_message = ""
+                        self.reset_game()
+                    else:
+                        self.error_message = message
+                elif event.key == pygame.K_r:
+                    self.game_state = REGISTER_STATE
+                elif event.key == pygame.K_BACKSPACE:
+                    if self.input_state == "username":
+                        self.login_username = self.login_username[:-1]
+                    else:
+                        self.login_password = self.login_password[:-1]
+                elif event.unicode.isprintable():
+                    if self.input_state == "username":
+                        self.login_username += event.unicode
+                    else:
+                        self.login_password += event.unicode
+        
+        return True
+
+    def handle_register_state(self):
+        SCREEN.fill((173, 216, 230))
+        font = pygame.font.Font('freesansbold.ttf', 30)
+        
+        active_color = (0, 255, 0)
+        inactive_color = (0, 0, 0)
+        
+        title = font.render("Register New Account", True, (0, 0, 0))
+        title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 100))
+        SCREEN.blit(title, title_rect)
+
+        username_text = font.render(f"Username: {self.login_username}", True,
+                                  active_color if self.input_state == "username" else inactive_color)
+        SCREEN.blit(username_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50))
+
+        password_display = '*' * len(self.login_password)
+        password_text = font.render(f"Password: {password_display}", True,
+                                  active_color if self.input_state == "password" else inactive_color)
+        SCREEN.blit(password_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2))
+
+        if self.error_message:
+            error_text = font.render(self.error_message, True, (255, 0, 0))
+            SCREEN.blit(error_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 50))
+
+        inst_font = pygame.font.Font('freesansbold.ttf', 20)
+        instructions = [
+            "Press TAB to switch between username and password",
+            "Press ENTER to register",
+            "Press L to go back to login"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            inst_text = inst_font.render(instruction, True, (0, 0, 0))
+            SCREEN.blit(inst_text, (SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 + 100 + i * 30))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_TAB:
+                    self.input_state = "password" if self.input_state == "username" else "username"
+                elif event.key == pygame.K_RETURN:
+                    success, message = self.user_manager.register_user(self.login_username, self.login_password)
+                    if success:
+                        self.error_message = "Registration successful! Press L to login"
+                    else:
+                        self.error_message = message
+                elif event.key == pygame.K_l:
+                    self.game_state = LOGIN_STATE
+                    self.error_message = ""
+                    # Clear login credentials
+                    self.login_username = ""
+                    self.login_password = ""
+                elif event.key == pygame.K_BACKSPACE:
+                    if self.input_state == "username":
+                        self.login_username = self.login_username[:-1]
+                    else:
+                        self.login_password = self.login_password[:-1]
+                elif event.unicode.isprintable():
+                    if self.input_state == "username":
+                        self.login_username += event.unicode
+                    else:
+                        self.login_password += event.unicode
+        
+        return True
+
     def run(self):
         while True:
-            if self.game_state == MENU_STATE:
+            if self.game_state == LOGIN_STATE:
+                if not self.handle_login_state():
+                    break
+            elif self.game_state == REGISTER_STATE:
+                if not self.handle_register_state():
+                    break
+            elif self.game_state == MENU_STATE:
                 if not self.handle_menu_state():
                     break
             elif self.game_state == GAME_STATE:

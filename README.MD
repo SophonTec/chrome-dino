@@ -1,32 +1,60 @@
-# Chrome Dino Game
+# Chrome Dino Game Clone
 
-![Preview](/preview.png)
-<br>
-<br>
+A Python implementation of the Chrome Dinosaur Game with added features like user authentication and score tracking.
 
-**Chrome Dinosaur Game** in **Python** using **Pygame**! 🦖
+## Features
 
-It's the game you see in the Chrome Browser, when you're offline. 
+### User Management
+- User registration and login system
+- Password protection
+- Remembers last logged-in user
+- Multiple user support
+- User switching capability
 
-Made by [maxontech](https://twitter.com/max_on_tech)
+### Gameplay
+- Classic dinosaur running game mechanics
+- Jump over cacti and dodge birds
+- Increasing difficulty with speed
+- Score tracking
+- Pause functionality
 
-## Table of contents
+### Score System
+- Personal top 5 scores per user
+- Global leaderboard (top 5 scores)
+- Persistent score storage
+- Real-time score updates
+
+### Game States
+1. Login/Register
+2. Menu
+3. Active Game
+4. Pause Screen
+5. Game Over
+
+## Controls
+
+### Game Controls
+- UP ARROW: Jump
+- DOWN ARROW: Duck
+- SPACE: Pause/Resume
+
+### Menu Controls
+- Any key: Start game
+- R: Restart
+- Q: Quit
+
+### Login/Register Controls
+- TAB: Switch between username/password fields
+- ENTER: Submit
+- R: Switch to registration
+- L: Switch to login
+
+## File Structure
 
 - [Description](#description)
-- [YouTube Tutorial](#youtube-tutorial)
 - [Installation](#installation)
 - [Controls](#controls)
 - [Libraries](#libraries)
-- [FAQ](#faq)
-- [Contact](#contact)
-
-## YouTube Videos
-
-1. [Python/Pygame Chrome Dino (Part 1) - Setup & Dino Animation](https://youtu.be/wnBGG7JLrkg?feature=shared)
-2. [Python/Pygame Chrome Dino (Part 2) -JUMPING & DUCKING Motion](https://youtu.be/aAkO8Pketkg?feature=shared)
-3. [Python/Pygame Chrome Dino (Part 3) - Score & Background](https://youtu.be/KbKMqxVw8x0?feature=shared)
-4. [Python/Pygame Chrome Dino (Part 4) - Obstacles and Collisions](https://youtu.be/LYvrb-1ntIE?feature=shared)
-5. [Python/Pygame Chrome Dino (Part 5) - Menu and Final Touches](https://youtu.be/xQ5UCzFKR58?feature=shared)
 
 ## Description
 
@@ -34,20 +62,49 @@ This is a simple implementation of the Chrome Dinosaur Game using Python and Pyg
 The game gets progressively harder as the player's score increases. See how far you can get!
 
 ## Installation
-Requirements: You must have Python installed and preferably a code editor like PyCharm.
 
-1. Clone the repository 
-2. In the terminal, navigate to the directory where the repository was cloned, e.g., `C:\Users\Max\PycharmProjects\chrome-dinosaur`
-3. Create a virtual environment, activate it, and install pygame by running the following commands in the terminal:
-    ```bash
-    python -m venv venv #This creates a virtual environment
-    venv\Scripts\activate #This activates the virtual environment
-    pip install pygame #This installs the Pygame library
-    ```
-4. Run the game by running the following command in the terminal:
-    ```bash
-    python main.py
-    ```
+### Requirements
+- Python 3.x
+- pip (Python package installer)
+
+### Steps
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd chrome-dino-game
+   ```
+
+2. Create and activate a virtual environment (recommended):
+   ```bash
+   # Windows
+   python -m venv venv
+   venv\Scripts\activate
+
+   # macOS/Linux
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Install required packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Run the game:
+   ```bash
+   python dino.py
+   ```
+
+### Data Files
+The game will automatically create these JSON files on first run:
+- `users.json`: Stores user credentials
+- `scores.json`: Stores game scores
+- `last_login.json`: Remembers last login
+
+### Troubleshooting
+- Make sure Python and pip are properly installed
+- Ensure all game assets are in the correct directories
+- Check if the virtual environment is activated before installing requirements
 
 ## Controls
 - Use the up arrow key or spacebar to jump.
@@ -57,13 +114,3 @@ Requirements: You must have Python installed and preferably a code editor like P
 ## Libraries
 
 - [pygame](https://www.pygame.org/news): Pygame is a cross-platform set of Python modules designed for writing video games.
-
-## FAQ
-- How to Open GitHub Projects in PyCharm? [Explained Here](https://youtu.be/cAnWazo5pFU)
-- How to use Virtual Environments? [Explained Here](https://youtu.be/2P30W3TN4nI)
-- How to install PyCharm and Python? [Explained Here](https://youtu.be/XsL8JDkH-ec)
-- How to set PyCharm Config. and Interpreter? [Explained Here](https://youtu.be/OajNS-WHiUI)
-
-## Contact
-
-Feel free to reach out to me [on Twitter](https://twitter.com/max_on_tech) if you have any questions or feedback! Hope you find this useful!
