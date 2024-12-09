@@ -35,6 +35,32 @@ GAME_OVER_STATE = "game_over"
 LOGIN_STATE = "login"
 REGISTER_STATE = "register"
 
+BULLET_COLOR = (255, 0, 0)  # Red color for bullets
+BULLET_SPEED = 15
+BULLET_SIZE = 10
+GIFT_SPAWN_CHANCE = 0.8  # 100% chance when it's time to spawn (after 5 obstacles)
+OBSTACLE_COUNT_FOR_GIFT = 3  # Every N obstacles
+INITIAL_BULLETS = 5
+GIFT_MIN_HEIGHT = 300  # Higher position
+GIFT_MAX_HEIGHT = 150   # Even higher for jump collection
+MIN_OBSTACLE_DISTANCE = 50  # Keep good distance for the larger gift box
+
+# Add gift box appearance constants
+GIFT_BOX = pygame.image.load(os.path.join("Assets/Other", "GiftBox.png"))
+
+
+class Bullet:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, BULLET_SIZE, BULLET_SIZE)
+        self.speed = BULLET_SPEED
+
+    def update(self):
+        self.rect.x += self.speed
+        return self.rect.x > SCREEN_WIDTH  # Return True if bullet is off screen
+
+    def draw(self, screen):
+        pygame.draw.circle(screen, BULLET_COLOR, self.rect.center, BULLET_SIZE // 2)
+
 
 class Dinosaur:
     X_POS = 80
@@ -57,6 +83,11 @@ class Dinosaur:
         self.dino_rect = self.image.get_rect()
         self.dino_rect.x = self.X_POS
         self.dino_rect.y = self.Y_POS
+
+        self.bullets = []
+        self.shoot_cooldown = 0
+        self.SHOOT_DELAY = 20  # Minimum frames between shots
+        self.bullet_count = INITIAL_BULLETS
 
     def update(self, userInput):
         if self.dino_duck:
@@ -82,6 +113,20 @@ class Dinosaur:
             self.dino_run = True
             self.dino_jump = False
 
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown -= 1
+
+        if userInput[pygame.K_s] and self.shoot_cooldown == 0 and self.bullet_count > 0:
+            # Shoot from dinosaur's mouth position
+            bullet_x = self.dino_rect.x + self.dino_rect.width
+            bullet_y = self.dino_rect.y + self.dino_rect.height // 2
+            self.bullets.append(Bullet(bullet_x, bullet_y))
+            self.shoot_cooldown = self.SHOOT_DELAY
+            self.bullet_count -= 1  # Decrease bullet count
+
+        # Update bullets
+        self.bullets = [bullet for bullet in self.bullets if not bullet.update()]
+
     def duck(self):
         self.image = self.duck_img[self.step_index // 5]
         self.dino_rect = self.image.get_rect()
@@ -106,8 +151,18 @@ class Dinosaur:
                 self.dino_jump = False
                 self.jump_vel = self.JUMP_VEL
 
+    def add_bullets(self, amount=1):
+        self.bullet_count += amount
+
     def draw(self, SCREEN):
         SCREEN.blit(self.image, (self.dino_rect.x, self.dino_rect.y))
+        # Draw bullets
+        for bullet in self.bullets:
+            bullet.draw(SCREEN)
+        # Draw bullet count
+        font = pygame.font.Font('freesansbold.ttf', 20)
+        bullet_text = font.render(f"Bullets: {self.bullet_count}", True, (0, 0, 0))
+        SCREEN.blit(bullet_text, (20, 40))
 
 
 class Cloud:
@@ -191,6 +246,8 @@ class Game:
         self.input_state = "username"
         self.error_message = ""
         self.current_score_saved = False
+        self.gift_boxes = []
+        self.obstacle_count = 0  # Add counter for obstacles
 
     def reset_game(self):
         self.game_speed = 20
@@ -201,6 +258,9 @@ class Game:
         self.player = Dinosaur()
         self.cloud = Cloud()
         self.current_score_saved = False
+        self.gift_boxes = []
+        self.obstacle_count = 0  # Reset obstacle counter
+        self.player.bullet_count = INITIAL_BULLETS
 
     def draw_pause_screen(self):
         SCREEN.fill((173, 216, 230))
@@ -268,6 +328,14 @@ class Game:
                 self.game_state = GAME_STATE
         return True
 
+    def get_safe_gift_position(self):
+        """Calculate a safe position between obstacles for the gift box"""
+        obstacle_size = 100
+
+        safe_start = SCREEN_WIDTH + obstacle_size + MIN_OBSTACLE_DISTANCE
+        safe_end = SCREEN_WIDTH * 2 - MIN_OBSTACLE_DISTANCE
+        return random.randint(safe_start, safe_end)
+
     def handle_game_state(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -289,13 +357,23 @@ class Game:
             self.player.draw(SCREEN)
             self.player.update(userInput)
 
-            # Check collisions before updating score
+            # Check bullet collisions with obstacles
+            for bullet in self.player.bullets[:]:  # Create a copy of the list to modify it safely
+                for obstacle in self.obstacles[:]:  # Same here
+                    if bullet.rect.colliderect(obstacle.rect):
+                        if bullet in self.player.bullets:  # Check again as it might have been removed
+                            self.player.bullets.remove(bullet)
+                        if obstacle in self.obstacles:  # Check again as it might have been removed
+                            self.obstacles.remove(obstacle)
+                        break
+
+            # Check dinosaur collisions with remaining obstacles
             for obstacle in self.obstacles:
                 obstacle.draw(SCREEN)
                 if self.player.dino_rect.colliderect(obstacle.rect):
                     pygame.time.delay(2000)
                     self.game_state = GAME_OVER_STATE
-                    return True  # Return early to prevent score increment
+                    return True
 
             self.obstacles = [obstacle for obstacle in self.obstacles if not obstacle.update(self.game_speed)]
             
@@ -307,6 +385,25 @@ class Game:
                     self.obstacles.append(LargeCactus(LARGE_CACTUS))
                 else:
                     self.obstacles.append(Bird(BIRD))
+                
+                # Increment obstacle counter and check for gift box spawn
+                self.obstacle_count += 1
+                if self.obstacle_count >= OBSTACLE_COUNT_FOR_GIFT:
+                    if len(self.gift_boxes) == 0 and random.random() < GIFT_SPAWN_CHANCE:
+                        safe_x = self.get_safe_gift_position()
+                        if safe_x is not None:
+                            gift = GiftBox()
+                            gift.rect.x = safe_x
+                            self.gift_boxes.append(gift)
+                            self.obstacle_count = 0
+
+            # Update and check gift box collisions
+            self.gift_boxes = [gift for gift in self.gift_boxes if not gift.update(self.game_speed)]
+            for gift in self.gift_boxes[:]:
+                gift.draw(SCREEN)
+                if self.player.dino_rect.colliderect(gift.rect):
+                    self.player.add_bullets()
+                    self.gift_boxes.remove(gift)
 
             self.background()
             self.cloud.draw(SCREEN)
@@ -561,6 +658,30 @@ class Game:
 
         pygame.quit()
         exit()
+
+    def is_safe_to_spawn_gift(self):
+        # Check distance from all obstacles
+        for obstacle in self.obstacles:
+            distance = abs(obstacle.rect.x - SCREEN_WIDTH)
+            if distance < MIN_OBSTACLE_DISTANCE:
+                return False
+        return True
+
+
+class GiftBox:
+    def __init__(self):
+        self.image = GIFT_BOX  # 100x100 image
+        self.rect = self.image.get_rect()
+        self.rect.x = SCREEN_WIDTH  # This will be overridden by safe position
+        # Random height between max (higher) and min (lower)
+        self.rect.y = random.randint(GIFT_MAX_HEIGHT, GIFT_MIN_HEIGHT)
+
+    def update(self, game_speed):
+        self.rect.x -= game_speed
+        return self.rect.x < -self.rect.width
+
+    def draw(self, SCREEN):
+        SCREEN.blit(self.image, self.rect)
 
 
 if __name__ == "__main__":

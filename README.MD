@@ -14,6 +14,8 @@ A Python implementation of the Chrome Dinosaur Game with added features like use
 ### Gameplay
 - Classic dinosaur running game mechanics
 - Jump over cacti and dodge birds
+- Shoot bullets to destroy obstacles (limited ammunition)
+- Collect gift boxes to gain extra bullets
 - Increasing difficulty with speed
 - Score tracking
 - Pause functionality
@@ -37,6 +39,7 @@ A Python implementation of the Chrome Dinosaur Game with added features like use
 - UP ARROW: Jump
 - DOWN ARROW: Duck
 - SPACE: Pause/Resume
+- S: Shoot bullets
 
 ### Menu Controls
 - Any key: Start game
