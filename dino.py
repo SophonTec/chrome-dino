@@ -297,10 +297,14 @@ class Game:
         self.points += 1
         if self.points % 100 == 0:
             self.game_speed += 1
-
-        text = self.font.render("Points: " + str(self.points), True, (0, 0, 0))
+        
+        if len(self.login_username) > 10:
+            username = self.login_username[:10] + "**"
+        else:
+            username = self.login_username
+        text = self.font.render(f"User: {username}, Points: {self.points}", True, (0, 0, 0))
         textRect = text.get_rect()
-        textRect.center = (1000, 40)
+        textRect.center = (900, 40)
         SCREEN.blit(text, textRect)
 
     def background(self):
@@ -507,7 +511,7 @@ class Game:
         SCREEN.fill((173, 216, 230))
         font = pygame.font.Font('freesansbold.ttf', 30)
         
-        active_color = (0, 255, 0)  # Green for active field
+        active_color = (0, 180, 0)  # Green for active field
         inactive_color = (0, 0, 0)  # Black for inactive field
         
         title = font.render("Chrome Dino Game", True, (0, 0, 0))
@@ -533,7 +537,7 @@ class Game:
         instructions = [
             "Press TAB to switch between username and password",
             "Press ENTER to login",
-            "Press R to register new account"
+            "Press / to register new account"
         ]
         
         for i, instruction in enumerate(instructions):
@@ -554,8 +558,10 @@ class Game:
                         self.reset_game()
                     else:
                         self.error_message = message
-                elif event.key == pygame.K_r:
+                elif event.key == pygame.K_SLASH:
                     self.game_state = REGISTER_STATE
+                    self.login_username = ""
+                    self.login_password = ""
                 elif event.key == pygame.K_BACKSPACE:
                     if self.input_state == "username":
                         self.login_username = self.login_username[:-1]
@@ -573,7 +579,7 @@ class Game:
         SCREEN.fill((173, 216, 230))
         font = pygame.font.Font('freesansbold.ttf', 30)
         
-        active_color = (0, 255, 0)
+        active_color = (0, 180, 0)
         inactive_color = (0, 0, 0)
         
         title = font.render("Register New Account", True, (0, 0, 0))
@@ -597,7 +603,7 @@ class Game:
         instructions = [
             "Press TAB to switch between username and password",
             "Press ENTER to register",
-            "Press L to go back to login"
+            "Press / to go back to login"
         ]
         
         for i, instruction in enumerate(instructions):
@@ -613,10 +619,10 @@ class Game:
                 elif event.key == pygame.K_RETURN:
                     success, message = self.user_manager.register_user(self.login_username, self.login_password)
                     if success:
-                        self.error_message = "Registration successful! Press L to login"
+                        self.error_message = "Registration successful! Press / to login"
                     else:
                         self.error_message = message
-                elif event.key == pygame.K_l:
+                elif event.key == pygame.K_SLASH:
                     self.game_state = LOGIN_STATE
                     self.error_message = ""
                     # Clear login credentials
