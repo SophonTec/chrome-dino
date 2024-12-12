@@ -9,6 +9,9 @@ SCREEN_HEIGHT = 600
 SCREEN_WIDTH = 1100
 SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+# Add sound initialization after pygame.init()
+pygame.mixer.init()
+
 RUNNING = [pygame.image.load(os.path.join("Assets/Dino", "DinoRun1.png")),
            pygame.image.load(os.path.join("Assets/Dino", "DinoRun2.png"))]
 JUMPING = pygame.image.load(os.path.join("Assets/Dino", "DinoJump.png"))
@@ -47,6 +50,20 @@ MIN_OBSTACLE_DISTANCE = 50  # Keep good distance for the larger gift box
 
 # Add gift box appearance constants
 GIFT_BOX = pygame.image.load(os.path.join("Assets/Other", "GiftBox.png"))
+
+# Sound effect constants
+JUMP_SOUND = pygame.mixer.Sound(os.path.join("Assets/Sounds", "jump.wav"))
+COLLISION_SOUND = pygame.mixer.Sound(os.path.join("Assets/Sounds", "collision.wav"))
+GAME_OVER_SOUND = pygame.mixer.Sound(os.path.join("Assets/Sounds", "game_over.wav"))
+BULLET_SOUND = pygame.mixer.Sound(os.path.join("Assets/Sounds", "bullet.wav"))
+GIFT_SOUND = pygame.mixer.Sound(os.path.join("Assets/Sounds", "gift.wav"))
+
+# Adjust volume (optional)
+JUMP_SOUND.set_volume(0.5)
+COLLISION_SOUND.set_volume(0.7)
+GAME_OVER_SOUND.set_volume(0.8)
+BULLET_SOUND.set_volume(0.4)
+GIFT_SOUND.set_volume(0.6)
 
 
 class Bullet:
@@ -144,6 +161,7 @@ class Dinosaur:
     def jump(self):
         self.image = self.jump_img
         if self.dino_jump:
+            JUMP_SOUND.play()
             self.dino_rect.y -= self.jump_vel * 4
             self.jump_vel -= 0.8
             if self.dino_rect.y >= self.Y_POS:
@@ -365,6 +383,7 @@ class Game:
             for bullet in self.player.bullets[:]:  # Create a copy of the list to modify it safely
                 for obstacle in self.obstacles[:]:  # Same here
                     if bullet.rect.colliderect(obstacle.rect):
+                        COLLISION_SOUND.play()
                         if bullet in self.player.bullets:  # Check again as it might have been removed
                             self.player.bullets.remove(bullet)
                         if obstacle in self.obstacles:  # Check again as it might have been removed
@@ -406,6 +425,7 @@ class Game:
             for gift in self.gift_boxes[:]:
                 gift.draw(SCREEN)
                 if self.player.dino_rect.colliderect(gift.rect):
+                    GIFT_SOUND.play()
                     self.player.add_bullets()
                     self.gift_boxes.remove(gift)
 
@@ -419,6 +439,7 @@ class Game:
 
     def handle_game_over_state(self):
         if self.user_manager.current_user and not self.current_score_saved:
+            GAME_OVER_SOUND.play()
             self.user_manager.add_score(self.points)
             self.current_score_saved = True
         
